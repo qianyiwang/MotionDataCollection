@@ -35,12 +35,15 @@ public class MotionService extends Service implements SensorEventListener {
     private float yAcc; // acceleration apart from gravity
     private float xAcc;
     private float zAcc;
+    private float mAcc;
     private float yAccCurrent; // current acceleration including gravity
     private float xAccCurrent;
     private float zAccCurrent;
     private float yAccLast; // last acceleration including gravity
     private float xAccLast;
     private float zAccLast;
+    private float accLast;
+    private float accCurrent;
     boolean trigger = false;
     ArrayList<Float> dataArray_acc_y = new ArrayList();
     ArrayList<Float> dataGry = new ArrayList();
@@ -48,6 +51,10 @@ public class MotionService extends Service implements SensorEventListener {
 
     BroadcastReceiver broadcastReceiver;
     boolean recordToggle;
+
+    private static final float NS2S = 1.0f / 1000000000.0f;
+    private float timestamp;
+    private float angleVal;
 
     @Override
     public void onCreate() {
@@ -89,62 +96,43 @@ public class MotionService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-            gry_x = event.values[0];
-            gry_y = event.values[1];
-            gry_z = event.values[2];
-            mGryLast = mGryCurrent;
-            float omegaMagnitude = (float) Math.sqrt(gry_x * gry_x + gry_y * gry_y + gry_z * gry_z);
-            mGryCurrent = omegaMagnitude;
-            float delta = mGryCurrent - mGryLast;
-            mGry = mGry * 0.9f + delta; // perform low-cut filter
-
-//            if(mGry>=8) {
-//                if (!trigger) {
-//                    trigger = true;
-//                    excute();
-//                }
-//            }
-
-//            if(trigger){
-//                dataGry.add(mGry);
-//            }
-        }
-
-        if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
-            acc_x = event.values[0];
-            acc_y = event.values[1];
-            acc_z= event.values[2];
-            xAccLast = xAccCurrent;
-            yAccLast = yAccCurrent;
-            zAccLast = zAccCurrent;
-            yAccCurrent = acc_y;//(float) Math.sqrt(acc_x * acc_x + acc_y * acc_y + acc_z * acc_z);
-            xAccCurrent = acc_x;
-            zAccCurrent = acc_z;
-            float delta = yAccCurrent - yAccLast;
-            yAcc = yAcc * 0.9f + delta; // perform low-cut filter
-
-            float delta1 = xAccCurrent - xAccLast;
-            xAcc = xAcc * 0.9f + delta1; // perform low-cut filter
-            float delta2 = zAccCurrent - zAccLast;
-            zAcc = zAcc * 0.9f + delta2; // perform low-cut filter
-
-//            if(trigger){
-//                dataArray_acc_y.add(yAcc);
-//            }
-
-            if(recordToggle){
-                dispData();
+        if(timestamp!=0){
+            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+                gry_x = event.values[0];
+                gry_y = event.values[1];
+                gry_z = event.values[2];
+                mGryLast = mGryCurrent;
+                float omegaMagnitude = (float) Math.sqrt(gry_x * gry_x + gry_y * gry_y + gry_z * gry_z);
+                mGryCurrent = omegaMagnitude;
+                float delta = mGryCurrent - mGryLast;
+                mGry = mGry * 0.9f + delta; // perform low-cut filter
             }
 
+            if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
+                acc_x = event.values[0];
+                acc_y = event.values[1];
+                acc_z= event.values[2];
+
+                accLast = accCurrent;
+                accCurrent = (float) Math.sqrt(acc_x * acc_x + acc_y * acc_y + acc_z * acc_z);
+                float delta = accCurrent - accLast;
+                mAcc = accCurrent * 0.9f + delta; // perform low-cut filter
+
+                if(recordToggle){
+                    dispData();
+                }
+
+            }
+            final float dT = (event.timestamp - timestamp) * NS2S;
+            angleVal = mAcc*dT;
         }
+        timestamp = event.timestamp;
+
     }
 
     private void dispData() {
         Log.v("gry_m", String.valueOf(mGry));
-        Log.v("acc_x", String.valueOf(xAcc));
-        Log.v("acc_y", String.valueOf(yAcc));
-        Log.v("acc_z", String.valueOf(zAcc));
+        Log.v("angle", String.valueOf(angleVal));
     }
 
     @Override
