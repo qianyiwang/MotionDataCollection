@@ -33,8 +33,14 @@ public class MotionService extends Service implements SensorEventListener {
     private float mGryCurrent; // current acceleration including gravity
     private float mGryLast; // last acceleration including gravity
     private float yAcc; // acceleration apart from gravity
+    private float xAcc;
+    private float zAcc;
     private float yAccCurrent; // current acceleration including gravity
+    private float xAccCurrent;
+    private float zAccCurrent;
     private float yAccLast; // last acceleration including gravity
+    private float xAccLast;
+    private float zAccLast;
     boolean trigger = false;
     ArrayList<Float> dataArray_acc_y = new ArrayList();
     ArrayList<Float> dataGry = new ArrayList();
@@ -109,11 +115,19 @@ public class MotionService extends Service implements SensorEventListener {
             acc_x = event.values[0];
             acc_y = event.values[1];
             acc_z= event.values[2];
-//            acc_y_lowpass = acc_y_lowpass * 0.8f + (1 - 0.8f) * event.values[1];
+            xAccLast = xAccCurrent;
             yAccLast = yAccCurrent;
+            zAccLast = zAccCurrent;
             yAccCurrent = acc_y;//(float) Math.sqrt(acc_x * acc_x + acc_y * acc_y + acc_z * acc_z);
+            xAccCurrent = acc_x;
+            zAccCurrent = acc_z;
             float delta = yAccCurrent - yAccLast;
             yAcc = yAcc * 0.9f + delta; // perform low-cut filter
+
+            float delta1 = xAccCurrent - xAccLast;
+            xAcc = xAcc * 0.9f + delta1; // perform low-cut filter
+            float delta2 = zAccCurrent - zAccLast;
+            zAcc = zAcc * 0.9f + delta2; // perform low-cut filter
 
 //            if(trigger){
 //                dataArray_acc_y.add(yAcc);
@@ -128,7 +142,9 @@ public class MotionService extends Service implements SensorEventListener {
 
     private void dispData() {
         Log.v("gry_m", String.valueOf(mGry));
-        Log.v("acc_y: ", String.valueOf(yAcc));
+        Log.v("acc_x", String.valueOf(xAcc));
+        Log.v("acc_y", String.valueOf(yAcc));
+        Log.v("acc_z", String.valueOf(zAcc));
     }
 
     @Override
