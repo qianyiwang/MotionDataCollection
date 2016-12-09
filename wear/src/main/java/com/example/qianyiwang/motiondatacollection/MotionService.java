@@ -106,6 +106,8 @@ public class MotionService extends Service implements SensorEventListener {
                 mGryCurrent = omegaMagnitude;
                 float delta = mGryCurrent - mGryLast;
                 mGry = mGry * 0.9f + delta; // perform low-cut filter
+                final float dT = (event.timestamp - timestamp) * NS2S;
+                angleVal = mGry*dT;
             }
 
             if(event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION){
@@ -113,26 +115,42 @@ public class MotionService extends Service implements SensorEventListener {
                 acc_y = event.values[1];
                 acc_z= event.values[2];
 
+                xAccLast = xAccCurrent;
+                yAccLast = yAccCurrent;
+                zAccLast = zAccCurrent;
                 accLast = accCurrent;
-                accCurrent = (float) Math.sqrt(acc_x * acc_x + acc_y * acc_y + acc_z * acc_z);
-                float delta = accCurrent - accLast;
-                mAcc = accCurrent * 0.9f + delta; // perform low-cut filter
 
+                xAccCurrent = acc_x;
+                yAccCurrent = acc_y;
+                zAccCurrent = acc_z;
+                accCurrent = (float) Math.sqrt(acc_x * acc_x + acc_y * acc_y + acc_z * acc_z);
+
+                float delta_x = xAccCurrent-xAccLast;
+                float delta_y = yAccCurrent-yAccLast;
+                float delta_z = zAccCurrent-yAccLast;
+                float delta = accCurrent - accLast;
+                xAcc = xAccCurrent * 0.9f + delta_x;
+                yAcc = yAccCurrent * 0.9f + delta_y;
+                zAcc = zAccCurrent * 0.9f + delta_z;
+                mAcc = accCurrent * 0.9f + delta; // perform low-cut filter
                 if(recordToggle){
                     dispData();
                 }
-
             }
-            final float dT = (event.timestamp - timestamp) * NS2S;
-            angleVal = mAcc*dT;
+
         }
         timestamp = event.timestamp;
 
     }
 
     private void dispData() {
+
         Log.v("gry_m", String.valueOf(mGry));
         Log.v("angle", String.valueOf(angleVal));
+        Log.v("acc_x", String.valueOf(xAcc));
+        Log.v("acc_y", String.valueOf(yAcc));
+        Log.v("acc_z", String.valueOf(zAcc));
+        Log.v("acc_m", String.valueOf(mAcc));
     }
 
     @Override
