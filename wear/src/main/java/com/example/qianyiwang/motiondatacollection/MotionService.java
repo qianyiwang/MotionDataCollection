@@ -105,7 +105,8 @@ public class MotionService extends Service implements SensorEventListener {
                 float omegaMagnitude = (float) Math.sqrt(gry_x * gry_x + gry_y * gry_y + gry_z * gry_z);
                 mGryCurrent = omegaMagnitude;
                 float delta = mGryCurrent - mGryLast;
-                mGry = mGry * 0.9f + delta; // perform low-cut filter
+//                mGry = mGry * 0.9f + delta; // perform low-cut filter
+                mGry = mGry + 0.15f * delta;
                 final float dT = (event.timestamp - timestamp) * NS2S;
                 angleVal = mGry*dT;
             }
@@ -129,10 +130,14 @@ public class MotionService extends Service implements SensorEventListener {
                 float delta_y = yAccCurrent-yAccLast;
                 float delta_z = zAccCurrent-yAccLast;
                 float delta = accCurrent - accLast;
-                xAcc = xAccCurrent * 0.9f + delta_x;
-                yAcc = yAccCurrent * 0.9f + delta_y;
-                zAcc = zAccCurrent * 0.9f + delta_z;
-                mAcc = accCurrent * 0.9f + delta; // perform low-cut filter
+//                xAcc = xAccCurrent * 0.9f + delta_x;
+//                yAcc = yAccCurrent * 0.9f + delta_y;
+//                zAcc = zAccCurrent * 0.9f + delta_z;
+//                mAcc = accCurrent * 0.9f + delta; // perform low-cut filter
+                xAcc = xAccCurrent + 0.15f * delta_x;
+                yAcc = yAccCurrent + 0.15f * delta_y;
+                zAcc = zAccCurrent + 0.15f * delta_z;
+                mAcc = accCurrent + 0.15f * delta;
                 if(recordToggle){
                     dispData();
                 }

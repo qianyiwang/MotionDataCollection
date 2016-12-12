@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import math
-fileName = 'single_outside'
+fileName = 'test'
 gry_m = []
 acc_y = []
 acc_x = []
