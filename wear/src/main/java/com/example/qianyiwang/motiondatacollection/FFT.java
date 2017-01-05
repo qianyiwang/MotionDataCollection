@@ -1,136 +1,143 @@
 package com.example.qianyiwang.motiondatacollection;
 
-/******************************************************************************
- *  Compilation:  javac FFT.java
- *  Execution:    java FFT n
- *  Dependencies: Complex.java
+/*
+ *  Copyright 2006-2007 Columbia University.
  *
- *  Compute the FFT and inverse FFT of a length n complex sequence.
- *  Bare bones implementation that runs in O(n log n) time. Our goal
- *  is to optimize the clarity of the code, rather than performance.
+ *  This file is part of MEAPsoft.
  *
- *  Limitations
- *  -----------
- *   -  assumes n is a power of 2
+ *  MEAPsoft is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
  *
- *   -  not the most memory efficient algorithm (because it uses
- *      an object type for representing complex numbers and because
- *      it re-allocates memory for the subarray, instead of doing
- *      in-place or reusing a single temporary array)
+ *  MEAPsoft is distributed in the hope that it will be useful, but
+ *  WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
  *
- ******************************************************************************/
+ *  You should have received a copy of the GNU General Public License
+ *  along with MEAPsoft; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ *  02110-1301 USA
+ *
+ *  See the file "COPYING" for the text of the license.
+ */
 
 public class FFT {
 
-    // compute the FFT of x[], assuming its length is a power of 2
-    public static Complex[] fft(Complex[] x) {
-        int n = x.length;
+    int n, m;
 
-        // base case
-        if (n == 1) return new Complex[]{x[0]};
+    // Lookup tables. Only need to recompute when size of FFT changes.
+    double[] cos;
+    double[] sin;
 
-        // radix 2 Cooley-Tukey FFT
-        if (n % 2 != 0) {
-            throw new RuntimeException("n is not a power of 2");
+    double[] window;
+
+    public FFT(int n) {
+        this.n = n;
+        this.m = (int) (Math.log(n) / Math.log(2));
+
+        // Make sure n is a power of 2
+        if (n != (1 << m))
+            throw new RuntimeException("FFT length must be power of 2");
+
+        // precompute tables
+        cos = new double[n / 2];
+        sin = new double[n / 2];
+
+        // for(int i=0; i<n/4; i++) {
+        // cos[i] = Math.cos(-2*Math.PI*i/n);
+        // sin[n/4-i] = cos[i];
+        // cos[n/2-i] = -cos[i];
+        // sin[n/4+i] = cos[i];
+        // cos[n/2+i] = -cos[i];
+        // sin[n*3/4-i] = -cos[i];
+        // cos[n-i] = cos[i];
+        // sin[n*3/4+i] = -cos[i];
+        // }
+
+        for (int i = 0; i < n / 2; i++) {
+            cos[i] = Math.cos(-2 * Math.PI * i / n);
+            sin[i] = Math.sin(-2 * Math.PI * i / n);
         }
 
-        // fft of even terms
-        Complex[] even = new Complex[n / 2];
-        for (int k = 0; k < n / 2; k++) {
-            even[k] = x[2 * k];
-        }
-        Complex[] q = fft(even);
-
-        // fft of odd terms
-        Complex[] odd = even;  // reuse the array
-        for (int k = 0; k < n / 2; k++) {
-            odd[k] = x[2 * k + 1];
-        }
-        Complex[] r = fft(odd);
-
-        // combine
-        Complex[] y = new Complex[n];
-        for (int k = 0; k < n / 2; k++) {
-            double kth = -2 * k * Math.PI / n;
-            Complex wk = new Complex(Math.cos(kth), Math.sin(kth));
-            y[k] = q[k].plus(wk.times(r[k]));
-            y[k + n / 2] = q[k].minus(wk.times(r[k]));
-        }
-        return y;
+        makeWindow();
     }
 
-
-    // compute the inverse FFT of x[], assuming its length is a power of 2
-    public static Complex[] ifft(Complex[] x) {
-        int n = x.length;
-        Complex[] y = new Complex[n];
-
-        // take conjugate
-        for (int i = 0; i < n; i++) {
-            y[i] = x[i].conjugate();
-        }
-
-        // compute forward FFT
-        y = fft(y);
-
-        // take conjugate again
-        for (int i = 0; i < n; i++) {
-            y[i] = y[i].conjugate();
-        }
-
-        // divide by n
-        for (int i = 0; i < n; i++) {
-            y[i] = y[i].scale(1.0 / n);
-        }
-
-        return y;
-
+    protected void makeWindow() {
+        // Make a blackman window:
+        // w(n)=0.42-0.5cos{(2*PI*n)/(N-1)}+0.08cos{(4*PI*n)/(N-1)};
+        window = new double[n];
+        for (int i = 0; i < window.length; i++)
+            window[i] = 0.42 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1)) + 0.08
+                    * Math.cos(4 * Math.PI * i / (n - 1));
     }
 
-    // compute the circular convolution of x and y
-    public static Complex[] cconvolve(Complex[] x, Complex[] y) {
-
-        // should probably pad x and y with 0s so that they have same length
-        // and are powers of 2
-        if (x.length != y.length) {
-            throw new RuntimeException("Dimensions don't agree");
-        }
-
-        int n = x.length;
-
-        // compute FFT of each sequence
-        Complex[] a = fft(x);
-        Complex[] b = fft(y);
-
-        // point-wise multiply
-        Complex[] c = new Complex[n];
-        for (int i = 0; i < n; i++) {
-            c[i] = a[i].times(b[i]);
-        }
-
-        // compute inverse FFT
-        return ifft(c);
+    public double[] getWindow() {
+        return window;
     }
 
+    /***************************************************************
+     * fft.c Douglas L. Jones University of Illinois at Urbana-Champaign January
+     * 19, 1992 http://cnx.rice.edu/content/m12016/latest/
+     *
+     * fft: in-place radix-2 DIT DFT of a complex input
+     *
+     * input: n: length of FFT: must be a power of two m: n = 2**m input/output
+     * x: double array of length n with real part of data y: double array of
+     * length n with imag part of data
+     *
+     * Permission to copy and use this program is granted as long as this header
+     * is included.
+     ****************************************************************/
+    public void fft(double[] x, double[] y) {
+        int i, j, k, n1, n2, a;
+        double c, s, t1, t2;
 
-    // compute the linear convolution of x and y
-    public static Complex[] convolve(Complex[] x, Complex[] y) {
-        Complex ZERO = new Complex(0, 0);
+        // Bit-reverse
+        j = 0;
+        n2 = n / 2;
+        for (i = 1; i < n - 1; i++) {
+            n1 = n2;
+            while (j >= n1) {
+                j = j - n1;
+                n1 = n1 / 2;
+            }
+            j = j + n1;
 
-        Complex[] a = new Complex[2 * x.length];
-        for (int i = 0; i < x.length; i++) a[i] = x[i];
-        for (int i = x.length; i < 2 * x.length; i++) a[i] = ZERO;
+            if (i < j) {
+                t1 = x[i];
+                x[i] = x[j];
+                x[j] = t1;
+                t1 = y[i];
+                y[i] = y[j];
+                y[j] = t1;
+            }
+        }
 
-        Complex[] b = new Complex[2 * y.length];
-        for (int i = 0; i < y.length; i++) b[i] = y[i];
-        for (int i = y.length; i < 2 * y.length; i++) b[i] = ZERO;
+        // FFT
+        n1 = 0;
+        n2 = 1;
 
-        return cconvolve(a, b);
-    }
+        for (i = 0; i < m; i++) {
+            n1 = n2;
+            n2 = n2 + n2;
+            a = 0;
 
-    // display an array of Complex numbers to standard output
-    public static void show(Complex[] x, String title) {
-        for (int i = 0; i < x.length; i++) {
+            for (j = 0; j < n1; j++) {
+                c = cos[a];
+                s = sin[a];
+                a += 1 << (m - i - 1);
+
+                for (k = j; k < n; k = k + n2) {
+                    t1 = c * x[k + n1] - s * y[k + n1];
+                    t2 = s * x[k + n1] + c * y[k + n1];
+                    x[k + n1] = x[k] - t1;
+                    y[k + n1] = y[k] - t2;
+                    x[k] = x[k] + t1;
+                    y[k] = y[k] + t2;
+                }
+            }
         }
     }
 }
+

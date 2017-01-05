@@ -7,12 +7,12 @@
     tools:deviceIds="wear_round">
 
     <ToggleButton
-        android:id="@+id/togglebutton"
+        android:id="@+id/recordButton"
         android:layout_centerHorizontal="true"
         android:layout_centerVertical="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textOn="Training on"
-        android:textOff="Training off" />
+        android:textOn="Record on"
+        android:textOff="Record off" />
 
 </RelativeLayout>
